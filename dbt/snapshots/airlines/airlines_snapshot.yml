@@ -1,0 +1,10 @@
+version: 2
+
+snapshots:
+  - name: dim_aircraft_seats
+    columns:
+      - name: aircraft_code
+      - name: seat_no
+      - name: fare_conditions
+      - name: dbt_valid_from_custom
+      - name: dbt_valid_to_custom

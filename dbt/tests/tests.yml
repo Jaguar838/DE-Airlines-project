@@ -1,0 +1,104 @@
+version: 2
+
+models:
+  - name: fct_flights
+    columns:
+      - name: flight_id
+        tests:
+          - not_null
+          - unique
+      - name: status
+        tests:
+          - not_null
+          - accepted_values:
+              values: [
+                'Departed',
+                'Arrived',
+                'On Time',
+                'Cancelled', 
+                'Delayed', 
+                'Scheduled']
+
+  - name: fct_ticket_flights
+    columns:
+      - name: ticket_no
+        tests:
+          - not_null
+      - name: flight_id
+        tests:
+          - relationships:
+              to: ref('stg_airlines__flights')
+              field: flight_id
+
+  - name: fct_tickets
+    columns:
+      - name: ticket_no
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_airlines__tickets')
+              field: ticket_no
+      - name: passenger_id
+        tests:
+          - not_null
+
+  - name: fct_boarding_passes
+    columns:
+      - name: ticket_no
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_airlines__ticket_flights')
+              field: ticket_no
+      - name: flight_id
+        tests:
+          - relationships:
+              to: ref('stg_airlines__flights')
+              field: flight_id
+      - name: boarding_no
+        tests:
+          - not_null
+      - name: seat_no
+        tests:
+          - not_null
+
+  - name: fct_bookings
+    columns:
+      - name: book_ref
+        tests:
+          - not_null
+          - unique
+      - name: book_date
+        tests:
+          - not_null
+      - name: total_amount
+        tests:
+          - not_null
+
+snapshots:
+  - name: dim_aircrafts
+    columns:
+      - name: aircraft_code
+        tests:
+          - not_null
+          - unique
+          - dbt_utils.at_least_one
+      - name: model
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_airports
+    columns:
+      - name: airport_code
+        tests:
+          - not_null
+          - unique
+          - dbt_utils.at_least_one
+      - name: airport_name
+        tests:
+          - not_null
+          - unique   
+      - name: city
+        tests:
+          - not_null

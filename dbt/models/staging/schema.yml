@@ -1,0 +1,117 @@
+version: 2
+
+models:
+  - name: stg_airlines__aircrafts
+    description: Staging model for Aircraft models
+    columns:
+      - name: aircraft_code
+        description: Aircraft model code
+      - name: model
+        description: Aircraft model name
+      - name: range
+        description: Aircraft range in kilometers
+
+  - name: stg_airlines__airports
+    description: Staging model for Airports
+    columns:
+      - name: airport_code
+        description: Code of the airport
+      - name: airport_name
+        description: Name of the airport
+      - name: city
+        description: City where the airport is located
+      - name: coordinates
+        description: Coordinates of the airport
+      - name: timezone
+        description: Timezone of the airport
+
+  - name: stg_airlines__boarding_passes
+    description: Staging model for Boarding Passes
+    columns:
+      - name: ticket_no
+        description: Ticket number
+      - name: flight_id
+        description: Flight identifier
+      - name: boarding_no
+        description: Boarding number
+      - name: seat_no
+        description: Seat number
+
+  - name: stg_airlines__bookings
+    description: Bookings information
+    columns:
+    - name: book_ref
+      description: Booking reference
+    - name: book_date
+      description: Booking date
+    - name: total_amount
+      description: Total amount of booking
+    freshness:
+      warn_after:
+        count: 105
+        period: day
+      error_after:
+        count: 105
+        period: day
+      filter: current_timestamp::date - book_date::date < 105
+    loaded_at_field: book_date::timestamp
+
+  - name: stg_airlines__seats
+    description: Staging model for Seats
+    columns:
+      - name: aircraft_code
+        description: Aircraft model code
+      - name: seat_no
+        description: Seat number
+      - name: fare_conditions
+        description: Fare conditions
+
+  - name: stg_airlines__flights
+    description: Staging model for Flights
+    columns:
+      - name: flight_id
+        description: Flight identifier
+      - name: flight_no
+        description: Flight number
+      - name: scheduled_departure
+        description: Scheduled departure time
+      - name: scheduled_arrival
+        description: Scheduled arrival time
+      - name: departure_airport
+        description: Departure airport code
+      - name: arrival_airport
+        description: Arrival airport code
+      - name: status
+        description: Flight status
+      - name: aircraft_code
+        description: Aircraft model code
+      - name: actual_departure
+        description: Actual departure time
+      - name: actual_arrival
+        description: Actual arrival tim
+
+  - name: stg_airlines__ticket_flights
+    description: Staging model for Ticket Flights
+    columns:
+      - name: ticket_no
+        description: Ticket number
+      - name: flight_id
+        description: Flight identifier
+      - name: fare_conditions
+        description: Fare conditions
+      - name: amount
+        description: Amount paid for the ticket
+
+  - name: stg_airlines__tickets
+    description: Staging model for Tickets
+    columns:
+      - name: ticket_no
+        description: Ticket number
+      - name: book_ref
+        description: Booking reference
+      - name: passenger_id
+        description: Passenger identifier
+      - name: passenger_name
+        description: Passenger name
+      - name: contact_data
+        description: Passenger contact data

@@ -1,0 +1,51 @@
+version: 2
+
+sources:
+  - name: staging
+    tables:
+      - name: aircrafts
+        description: Aircraft models
+
+      - name: airports
+        description: airports data
+
+      - name: boarding_passes
+        description: >
+          A boarding pass issued at check-in for a flight, which indicates the seat on the aircraft.
+          A passenger can only check in for the flight that is on the ticket. 
+          The combination of flight and seat on the plane must be unique in order to prevent the issuance of two boarding passes for one seat.
+
+      - name: bookings
+        description: >
+          A booking is a document that contains information about the ticket and the passenger.
+          The ticket includes one or more flights (ticket_flights).
+          Several flights may be included in the ticket in cases where there is no direct flight connecting 
+          the points of departure and destination (flight with transfers), or when the ticket is taken "round trip".
+          There is no hard limit in the data scheme, but it is assumed that all tickets in one booking have the same set of flights.
+
+      - name: flights
+        description: >
+          Flights from one airport to another.
+          Flights with the same flight number have the same departure and destination points, but will have a different departure date.
+
+      - name: seats
+        description: >
+          Seats in model aircraft.
+          There is one row per seat in the aircraft model in this table.
+
+      - name: ticket_flights
+        description: >
+          One row in the table corresponds to one flight.
+          The ticket includes one or more flights (ticket_flights).
+          Several flights may be included in the ticket in cases where there is no direct flight connecting 
+          the points of departure and destination (flight with transfers), or when the ticket is taken "round trip".
+          There is no hard limit in the data scheme, but it is assumed that all tickets in one booking have the same set of flights.
+          
+      - name: tickets
+        description: >
+          A ticket is a document that contains information about the flight and seat.
+          The ticket includes one or more flights (ticket_flights).
+          Several flights may be included in the ticket in cases where there is no direct flight connecting 
+          the points of departure and destination (flight with transfers), or when the ticket is taken "round trip".
+          There is no hard limit in the data scheme, but it is assumed that all tickets in one booking have the same set of flights.
+          

@@ -1,0 +1,17 @@
+seeds:
+- name: personnel_airport
+  description: Seed for staff airport
+  config:
+    column_types:
+      passenger_id: varchar(12)
+      passenger_name: varchar(30)
+    delimiter: ';'
+  columns:
+    - name: passenger_id
+      description: Passenger identifier
+      tests:
+        - unique
+    - name: passenger_name
+      description: Passenger name
+      tests:
+        - unique
