@@ -10,4 +10,4 @@ SELECT
     coordinates, 
     timezone
 FROM 
-    {{ source('staging', 'airports') }}
+    {{ ref('airports') }}

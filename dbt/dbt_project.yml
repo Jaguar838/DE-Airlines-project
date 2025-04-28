@@ -26,3 +26,6 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   airline_practice:
+
+seeds:
+  airline_practice:

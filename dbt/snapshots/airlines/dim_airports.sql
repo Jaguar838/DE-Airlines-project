@@ -29,6 +29,6 @@ select
         then null
         else now()::timestamp
     end as dbt_valid_from_custom
-from {{ ref('stg_airlines__airports') }}
+from {{ ref('stg_dict__airports') }}
 
 {% endsnapshot %}

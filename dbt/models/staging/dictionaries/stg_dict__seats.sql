@@ -5,6 +5,7 @@
 }}
 SELECT 
     aircraft_code, 
-    model
+    seat_no, 
+    fare_conditions
 FROM 
-    {{ source('staging', 'aircrafts') }}
+    {{ ref('seats') }}
