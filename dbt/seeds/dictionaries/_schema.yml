@@ -1,0 +1,53 @@
+seeds:
+  - name: aircrafts
+    description: Staging model for Aircraft models
+    columns:
+      - name: aircraft_code
+        description: Aircraft model code
+      - name: model
+        description: Aircraft model name
+      - name: range
+        description: Aircraft range in kilometers
+
+  - name: airports
+    description: Staging model for Airports
+    columns:
+      - name: airport_code
+        description: Code of the airport
+      - name: airport_name
+        description: Name of the airport
+      - name: city
+        description: City where the airport is located
+      - name: coordinates
+        description: Coordinates of the airport
+      - name: timezone
+        description: Timezone of the airport
+
+  - name: personnel_airport
+    description: Seed for staff airport
+    config:
+      column_types:
+        passenger_id: STRING
+        passenger_name: STRING
+      delimiter: ';'
+    columns:
+      - name: passenger_id
+        description: Passenger identifier
+        data_tests:
+          - unique
+      - name: passenger_name
+        description: Passenger name
+        data_tests:
+          - unique
+          - not_null
+
+  - name: seats
+    description: Staging model for Seats
+    columns:
+      - name: aircraft_code
+        description: Aircraft model code
+      - name: seat_no
+        description: Seat number
+      - name: fare_conditions
+        description: Fare conditions
+
