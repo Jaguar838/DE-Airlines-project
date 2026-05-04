@@ -1,7 +1,9 @@
 version: 2
 
 sources:
-  - name: demo_src
+  - name: airline_raw
+    database: "{{ env_var('project_id', 'qwiklabs-gcp-01-d73ebccbfabc') }}"
+    schema: de_airlines_dataset
     tables:
       - name: aircrafts
         description: Модели самолетов
