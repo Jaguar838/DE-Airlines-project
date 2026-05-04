@@ -1,7 +1,7 @@
 # Name your project! Project names should contain only lowercase characters
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
-name: 'airline_project'
+name: 'airline_booking'
 # Require a specific dbt version for reproducibility
 require-dbt-version: [">=1.7.0", "<2.0.0"]
 # This setting configures which "profile" dbt uses for this project.
@@ -34,4 +34,5 @@ models:
     intermediate:
       +materialized: table
     marts:
+      +dataset: de_airlines_marts
       +materialized: table
