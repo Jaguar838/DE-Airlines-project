@@ -5,8 +5,11 @@
 !/terraform/
 !/dbt/
 !/kestra/
+!/data/
 
 # Внутри terraform игнорируем служебные файлы и секреты
+data/archive
+data/csv
 kestra/to_base64.py
 terraform/.tf.bak
 terraform/.terraform/*
