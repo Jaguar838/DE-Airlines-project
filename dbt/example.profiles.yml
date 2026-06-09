@@ -1,0 +1,21 @@
+airline_practice:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: gcp-id-project
+      dataset: de_airlines_marts
+      keyfile: /path/DE-Airlines-project/kestra-key.json
+      location: europe-west3
+      threads: 4
+      timeout_seconds: 300
+    prod:
+      type: bigquery
+      method: service-account
+      project: gcp-id-project
+      dataset: de_airlines_marts
+      keyfile: /path/DE-Airlines-project/kestra-key.json
+      location: europe-west3
+      threads: 8
+      timeout_seconds: 300

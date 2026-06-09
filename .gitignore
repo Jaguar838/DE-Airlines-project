@@ -1,0 +1,16 @@
+# Игнорируем всё в корневом каталоге
+/*
+
+# Делаем исключение для папки terraform
+!/terraform/
+!/dbt/
+
+# Внутри terraform игнорируем служебные файлы и секреты
+terraform/.tf.bak
+terraform/.terraform/*
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/*.tfvars
+terraform/*.tfvars.json
+terraform/kestra-key.json
+.terraform.lock.hcl

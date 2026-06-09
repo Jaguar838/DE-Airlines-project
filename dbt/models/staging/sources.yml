@@ -9,6 +9,11 @@ sources:
       - name: airports
         description: airports data
 
+      - name: seats
+        description: >
+          Seats in model aircraft.
+          There is one row per seat in the aircraft model in this table.
+
       - name: boarding_passes
         description: >
           A boarding pass issued at check-in for a flight, which indicates the seat on the aircraft.
@@ -27,11 +32,6 @@ sources:
         description: >
           Flights from one airport to another.
           Flights with the same flight number have the same departure and destination points, but will have a different departure date.
-
-      - name: seats
-        description: >
-          Seats in model aircraft.
-          There is one row per seat in the aircraft model in this table.
 
       - name: ticket_flights
         description: >

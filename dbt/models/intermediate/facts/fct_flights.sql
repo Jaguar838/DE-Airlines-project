@@ -1,6 +1,7 @@
 {{
     config(
-        materialized = 'view',
+        materialized = 'incremental',
+        unique_key = 'flight_id'
     )
 }}
 select
@@ -16,3 +17,10 @@ select
     actual_arrival
 from
     {{ ref('stg_airlines__flights') }}
+
+{% if is_incremental() %}
+
+  -- этот фильтр будет применен только при инкрементальном запуске
+  where scheduled_departure > (select max(scheduled_departure) from {{ this }})
+
+{% endif %}
