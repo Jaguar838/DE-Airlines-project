@@ -1,0 +1,131 @@
+id: airline_dbt_bigquery_transformation_dev
+namespace: afr.de_project
+description: |
+  CI/CD dbt flow. 
+  Starts automatically after the data download is complete (airline_full_load_bq).
+
+inputs:
+  #--- GIT SETTINGS ---
+  - id: repository_url
+    type: STRING
+    displayName: dbt Git Repository URL
+    description: "Full link to your Git repository (HTTPS). For example: https://github.com/your-user/airline-dbt-project.git"
+    required: true
+    defaults: https://github.com/Jaguar838/DE-Airlines-project
+
+  - id: git_branch
+    type: STRING
+    displayName: Git Branch
+    description: "The branch of the repository that needs to be cloned for execution."
+    defaults: "main"
+
+  - id: dbt_project_path_in_repo
+    type: STRING
+    displayName: dbt Project Root Path
+    description: "The path to the root of a dbt project inside a repository.
+     If the project lies at the root, specify '.'. If in a folder, for example, 'airline_analytics', specify its name."
+    defaults: "dbt"
+
+  
+  - id: dbt_profile_name
+    type: STRING
+    displayName: dbt Profile Name
+    description: "IMPORTANT: Must EXACTLY match the 'profile:' field in your dbt_project.yml file."
+    defaults: "airline_project"
+
+  # --- DBT PROFILE SETTINGS ---
+  - id: gcp_project_id
+    type: STRING
+    displayName: Google Cloud Project ID
+    description: "Your project ID in the Google Cloud Console (e.g. 'de-zoomcamp-456')."
+    defaults: "gcp-id-project"
+
+  - id: gcp_dataset
+    type: STRING
+    displayName: BigQuery Destination Dataset
+    description: "The name of the dataset in BigQuery where dbt will create the final tables/marts."
+    defaults: "de_airlines_dataset"
+
+  - id: gcp_location
+    type: STRING
+    displayName: BigQuery Data Location
+    description: "Data region. Usually 'EU' or 'US'."
+    defaults: "europe-west3"
+
+  - id: gcp_creds_json
+    type: STRING
+    displayName: GCP Service Account JSON Key
+    description: "The full contents of your service account key JSON file. By default, taken from the Kestra Key-Value store."
+    defaults: "{{ kv('GCP_CREDS') }}"
+
+  #--- TECHNICAL SETTINGS ---
+  - id: dbt_container_image
+    type: STRING
+    displayName: dbt Docker Image
+    description: "Docker image with dbt-bigquery pre-installed. Use the official kestra-io or dbt-labs images."
+    defaults: "ghcr.io/kestra-io/dbt-bigquery:latest"
+
+tasks:
+  - id: dbt_workflow
+    type: io.kestra.plugin.core.flow.WorkingDirectory
+    tasks:
+      - id: clone_repository
+        type: io.kestra.plugin.git.Clone
+        url: "{{ inputs.repository_url }}"
+        branch: main
+
+      - id: write_dbt_profile
+        type: io.kestra.plugin.scripts.shell.Commands
+        commands:
+          - |
+            cat <<EOF > profiles.yml
+            {{ inputs.dbt_profile_name }}:
+              target: dev
+              outputs:
+                dev:
+                  type: bigquery
+                  method: service-account
+                  project: "{{ inputs.gcp_project_id }}"
+                  dataset: "{{ inputs.gcp_dataset }}"
+                  location: "{{ inputs.gcp_location }}"
+                  keyfile: gcp_creds.json
+                  threads: 4
+            EOF
+
+      - id: dbt_debug
+        type: io.kestra.plugin.dbt.cli.DbtCLI
+        containerImage: ghcr.io/kestra-io/dbt-bigquery:latest
+        inputFiles:
+          gcp_creds.json: "{{ inputs.gcp_creds_json }}"
+        env:
+          DBT_PROFILES_DIR: "."
+        taskRunner:
+          type: io.kestra.plugin.scripts.runner.docker.Docker
+        commands:
+          - dbt debug
+        projectDir: "{{ inputs.dbt_project_path_in_repo }}"
+
+      - id: dbt_run
+        type: io.kestra.plugin.dbt.cli.DbtCLI
+        containerImage: ghcr.io/kestra-io/dbt-bigquery:latest
+        inputFiles:
+          gcp_creds.json: "{{ inputs.gcp_creds_json }}"
+        env:
+          DBT_PROFILES_DIR: ""
+        taskRunner:
+          type: io.kestra.plugin.scripts.runner.docker.Docker
+        commands:
+          - dbt deps
+          - dbt build # build will execute both run and test
+        projectDir: "{{ inputs.dbt_project_path_in_repo }}"
+
+triggers:
+  - id: after_data_load_completion
+    type: io.kestra.plugin.core.trigger.Flow
+    preconditions:
+      id: data_load_flow
+      flows:
+        - namespace: "{{ flow.namespace }}"
+          flowId: airline_full_load_bq
+          states:
+            - SUCCESS

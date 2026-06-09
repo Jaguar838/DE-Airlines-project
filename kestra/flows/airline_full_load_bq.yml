@@ -1,0 +1,97 @@
+id: airline_full_load_bq
+namespace: afr.de_project
+
+inputs:
+  - id: table_name
+    type: SELECT
+    description: The name of the table to load and merge
+    values:
+      - flights
+      - bookings
+      - tickets
+      - boarding_passes
+      - ticket_flights
+    defaults: flights
+
+  - id: gcp_dataset
+    type: STRING
+    description: The GCP BigQuery dataset ID
+    defaults: "de_airlines_dataset"
+
+  - id: gcs_bucket_name
+    type: STRING
+    description: The GCS bucket name where raw data is located
+    defaults: "qwiklabs-gcp-04-7caaa94073a8-bucket"
+
+  - id: gcp_project_id
+    type: STRING
+    description: The GCP project ID
+    defaults: "qwiklabs-gcp-04-7caaa94073a8"
+
+  - id: gcp_location
+    type: STRING
+    description: GCP Region
+    defaults: "us-west1"
+
+  - id: gcp_creds_json
+    type: STRING
+    description: GCP Service Account Key JSON
+    defaults: "{{ kv('GCP_CREDS') }}"
+
+variables:
+  table_keys:
+    flights: "flight_id"
+    bookings: "book_ref"
+    tickets: "ticket_no"
+    boarding_passes: "ticket_no, flight_id"
+    ticket_flights: "ticket_no, flight_id"
+    
+tasks:
+  - id: set_label
+    type: io.kestra.plugin.core.execution.Labels
+    labels:
+      table: "{{inputs.table_name}}"
+
+  - id: download_from_gcs
+    type: io.kestra.plugin.gcp.gcs.Download
+    description: "Забираем файл из GCS во внутреннее хранилище Kestra"
+    from: "gs://{{inputs.gcs_bucket_name}}/airlines/raw/{{inputs.table_name}}.csv"
+
+  - id: bq_load_raw
+    type: io.kestra.plugin.gcp.bigquery.Load
+    description: "Загрузка из внутреннего хранилища в BigQuery"
+    # Теперь мы берем URI, который сгенерировал предыдущий таск download_from_gcs
+    from: "{{ outputs.download_from_gcs.uri }}"
+    destinationTable: "{{inputs.gcp_project_id}}.{{inputs.gcp_dataset}}.{{inputs.table_name}}_tmp"
+    format: CSV
+    autodetect: true
+    writeDisposition: WRITE_TRUNCATE
+    ignoreUnknownValues: true
+    csvOptions:
+      skipLeadingRows: 1
+
+  - id: bq_create_if_not_exists
+    type: io.kestra.plugin.gcp.bigquery.Query
+    sql: |
+      CREATE TABLE IF NOT EXISTS `{{inputs.gcp_project_id}}.{{inputs.gcp_dataset}}.{{inputs.table_name}}`
+      AS SELECT * FROM `{{inputs.gcp_project_id}}.{{inputs.gcp_dataset}}.{{inputs.table_name}}_tmp` LIMIT 0
+      
+  - id: bq_merge_final
+    type: io.kestra.plugin.gcp.bigquery.Query
+    sql: |
+      MERGE INTO `{{inputs.gcp_project_id}}.{{inputs.gcp_dataset}}.{{inputs.table_name}}` T
+      USING `{{inputs.gcp_project_id}}.{{inputs.gcp_dataset}}.{{inputs.table_name}}_tmp` S
+      ON {% for key in vars.table_keys[inputs.table_name].split(', ') %} T.{{key}} = S.{{key}} {% if not loop.last %} AND {% endif %} {% endfor %}
+      WHEN NOT MATCHED THEN INSERT ROW;
+      
+  - id: cleanup_tmp
+    type: io.kestra.plugin.gcp.bigquery.DeleteTable
+    dataset: "{{inputs.gcp_dataset}}"
+    table: "{{inputs.table_name}}_tmp"
+
+pluginDefaults:
+  - type: io.kestra.plugin.gcp
+    values:
+      serviceAccount: "{{inputs.gcp_creds_json}}"
+      projectId: "{{inputs.gcp_project_id}}"
+      location: "{{inputs.gcp_location}}"

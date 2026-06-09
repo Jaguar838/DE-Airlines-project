@@ -1,0 +1,112 @@
+id: airline_dbt_bigquery_prod
+namespace: afr.de_project
+description: |
+  CI/CD dbt flow for Airline Data in BigQuery.
+  Clones dbt repo, compiles, and runs only modified models.
+  Uses BigQuery adapter.
+
+inputs:
+  - id: repository_url
+    type: STRING
+    displayName: dbt Git Repo URL
+    description: The URL of the repository with the dbt project.
+    defaults: https://github.com/Jaguar838/DE-Airlines-project
+
+  - id: git_branch
+    type: STRING
+    displayName: Git Branch
+    defaults: main
+
+  - id: dbt_project_path_in_repo
+    type: STRING
+    displayName: dbt Project Path
+    description: The path to the dbt project inside the repository (e.g. 'dbt' or '.').
+    defaults: dbt
+
+  - id: gcp_project_id
+    type: STRING
+    displayName: GCP Project ID
+    defaults: "gcp-id-project"
+
+  - id: gcp_dataset
+    type: STRING
+    displayName: BigQuery Dataset
+    description: A dataset where dbt will record showcases.
+    defaults: "de_airlines_dataset"
+
+  - id: gcp_location
+    type: STRING
+    displayName: GCP Location
+    defaults: "europe-west3"
+
+  - id: gcp_creds_json
+    type: STRING
+    displayName: GCP Service Account JSON
+    description: "Paste the contents of the JSON key (or {{kv('GCP_CREDS')}})"
+    defaults: "{{kv('GCP_CREDS')}}"
+
+  - id: dbt_container_image
+    type: STRING
+    defaults: ghcr.io/kestra-io/dbt-bigquery:latest
+variables:
+  dbt_profile_name: "airline_project"
+tasks:
+  - id: dbt_workflow
+    type: io.kestra.plugin.core.flow.WorkingDirectory
+    tasks:
+      - id: clone_repository
+        type: io.kestra.plugin.git.Clone
+        url: "{{ inputs.repository_url }}"
+        branch: "{{ inputs.git_branch }}"
+      - id: write_dbt_profile
+        type: io.kestra.plugin.scripts.shell.Commands
+        commands:
+          - |
+            cat <<EOF > profiles.yml
+            {{ vars.dbt_profile_name }}:
+              target: prod
+              outputs:
+                prod:
+                  type: bigquery
+                  method: service-account
+                  project: "{{ inputs.gcp_project_id }}"
+                  dataset: "{{ inputs.gcp_dataset }}"
+                  location: "{{ inputs.gcp_location }}"
+                  keyfile: gcp_creds.json # Ссылаемся на файл, который создадим ниже
+                  threads: 4
+                  timeout_seconds: 300
+            EOF
+      - id: dbt_execution
+        type: io.kestra.plugin.dbt.cli.DbtCLI
+        containerImage: "{{ inputs.dbt_container_image }}"
+        inputFiles:
+          gcp_creds.json: "{{ inputs.gcp_creds_json }}"
+        loadManifest:
+          key: manifest-production.json
+          namespace: "{{ flow.namespace }}"
+        allowFailure: true
+        env:
+          DBT_PROFILES_DIR: "../"
+        taskRunner:
+          type: io.kestra.plugin.scripts.runner.docker.Docker
+        projectDir: "{{ inputs.dbt_project_path_in_repo }}"
+        commands:
+          - dbt deps
+          - |
+            # 1. Check the file at the root (where Kestra put it)
+            # or in a subfolder (if projectDir=.)
+            if [ -f "../manifest.json" ] || [ -f "manifest.json" ]; then
+              echo "--> State found. Preparing target directory..."
+              mkdir -p target
+              # Copy the manifest to the target folder inside the project
+              cp ../manifest.json ./target/manifest.json 2>/dev/null || cp ./manifest.json ./target/manifest.json
+              
+              echo "--> Running smart build..."
+              dbt build --defer --state ./target --models state:modified+
+            else
+              echo "--> No state found. Running full build..."
+              dbt build
+            fi
+        storeManifest:
+          key: manifest-production.json
+          namespace: "{{ flow.namespace }}"

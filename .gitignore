@@ -4,8 +4,10 @@
 # Делаем исключение для папки terraform
 !/terraform/
 !/dbt/
+!/kestra/
 
 # Внутри terraform игнорируем служебные файлы и секреты
+kestra/to_base64.py
 terraform/.tf.bak
 terraform/.terraform/*
 terraform/*.tfstate

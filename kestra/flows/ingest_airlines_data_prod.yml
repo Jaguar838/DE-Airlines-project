@@ -1,0 +1,101 @@
+id: ingest_airlines_data_production
+namespace: afr.de_project
+description: |
+  Production-ready Kestra flow.
+  - Parallel processing per dataset.
+  - No runtime package installation (replaced jq with Kestra's built-in parsing).
+  - Granular retries and error handling.
+
+inputs:
+  - id: gcp_project_id
+    type: STRING
+    defaults: "gcp-id-project"
+
+  - id: gcp_location
+    type: STRING
+    defaults: "europe-west3"
+
+  - id: bucket_name
+    type: STRING
+    defaults: "de-airlines-bucket"
+
+  - id: gcp_creds_json
+    type: STRING
+    defaults: "{{ kv('GCP_CREDS') }}"
+
+  - id: data_url
+    type: STRING
+    displayName: dbt Git Repository URL
+    description: "Full link to airlines data
+    required: true
+    defaults: https://raw.githubusercontent.com/Jaguar838/DE-Airlines-project/main/data
+
+  - id: datasets
+    type: ARRAY
+    defaults:
+      - boarding_passes
+      - bookings
+      - flights
+      - ticket_flights
+      - tickets
+    itemType: STRING
+
+tasks:
+  - id: process_datasets
+    type: io.kestra.plugin.core.flow.ForEach
+    values: "{{ inputs.datasets }}"
+    concurrencyLimit: 2
+    tasks:
+      - id: stream_to_gcs
+        type: io.kestra.plugin.scripts.shell.Script
+        containerImage: google/cloud-sdk:slim
+        retry:
+          type: constant
+          maxAttempts: 3
+          interval: PT1M
+        
+        env:
+          DETECTED_PROJECT_ID: "{{ inputs.gcp_project_id }}"
+        
+        inputFiles:
+          gcp_creds.json: "{{ inputs.gcp_creds_json }}"
+        script: |
+          #!/bin/bash
+          set -e
+
+          echo "--> Project ID: $DETECTED_PROJECT_ID"
+
+          # auth
+          gcloud auth activate-service-account --key-file=gcp_creds.json --quiet --project="$DETECTED_PROJECT_ID"
+
+          # 2. Setup
+          DATASET="{{ taskrun.value }}"
+          BASE_URL="{{ inputs.data_url }}"
+          TAR_URL="$BASE_URL/${DATASET}.tar"
+          GCS_DEST="gs://{{ inputs.bucket_name }}/airlines/raw"
+          
+          echo "--> Processing dataset: $DATASET"
+
+          # 3. Stream: Curl -> Tar -> Gsutil (No local disk storage for CSV)
+          curl -L --fail "$TAR_URL" -o "${DATASET}.tar"
+
+          CSV_FILES=$(tar -tf "${DATASET}.tar" | grep '\.csv$' || true)
+
+          if [ -z "$CSV_FILES" ]; then
+              echo "No CSV found in $DATASET"
+              exit 0
+          fi
+
+          for csv in $CSV_FILES; do
+              TARGET_FILE="$GCS_DEST/$(basename "$csv")"
+              echo "Streaming $csv to $TARGET_FILE"
+              tar -xOf "${DATASET}.tar" "$csv" | gsutil cp - "$TARGET_FILE"
+          done
+
+          # 4. Cleanup inside container
+          rm "${DATASET}.tar"
+
+triggers:
+  - id: daily_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 4 * * *"  # 04:00 UTC daily
